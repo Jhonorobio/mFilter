@@ -1,5 +1,7 @@
 from telethon import TelegramClient, events
 import requests
+from flask import Flask
+import threading
 
 # Credenciales de Telegram
 api_id = '20491337'
@@ -13,7 +15,7 @@ chat_id = '1048966581'  # Chat ID del bot receptor
 chats_especificos = [-1002124901271,]  # Cambia estos por los IDs de tus grupos o canales
 palabras_clave = ['pump', 'palabra2', 'palabra3']  # Cambia estas palabras
 
-# Inicializar cliente
+# Inicializar cliente de Telethon
 client = TelegramClient('session_name', api_id, api_hash)
 
 @client.on(events.NewMessage(chats=chats_especificos))
@@ -21,7 +23,6 @@ async def handler(event):
     # Obtener información del mensaje
     sender = await event.get_sender()
     nombre_usuario = sender.username or sender.first_name or "Usuario desconocido"
-    chat_nombre = event.chat.title or "Chat desconocido"
 
     # Verificar si el mensaje contiene alguna palabra clave
     mensaje_contiene_palabras = any(palabra.lower() in event.message.message.lower() for palabra in palabras_clave)
@@ -39,5 +40,21 @@ async def handler(event):
         requests.post(url, data=data)
 
 print("Bot ejecutándose...")
-client.start()
-client.run_until_disconnected()
+
+# Crear un servidor HTTP básico
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "El bot está funcionando correctamente."
+
+# Ejecutar el servidor HTTP en un hilo separado
+def start_flask():
+    app.run(host="0.0.0.0", port=8080)
+
+# Iniciar el bot y el servidor Flask
+if __name__ == "__main__":
+    flask_thread = threading.Thread(target=start_flask)
+    flask_thread.start()
+    client.start()
+    client.run_until_disconnected()
