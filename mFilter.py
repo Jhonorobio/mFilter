@@ -12,14 +12,23 @@ bot_token = '7493720743:AAEzWFNGly-FZjGDLToRvOdUIuyTFvhgLh4'  # Token del bot cr
 chat_id = '1048966581'  # Chat ID del bot receptor
 
 # Lista de grupos o canales específicos
-chats_especificos = [-1002124901271,]  # Cambia estos por los IDs de tus grupos o canales
+chats_especificos = [-1002124901271]  # Cambia estos por los IDs de tus grupos o canales
 palabras_clave = ['pump', 'palabra2', 'palabra3']  # Cambia estas palabras
 
 # Inicializar cliente de Telethon
 client = TelegramClient('session_name', api_id, api_hash)
 
+# Estado de las notificaciones
+notificaciones_activas = True
+
 @client.on(events.NewMessage(chats=chats_especificos))
 async def handler(event):
+    global notificaciones_activas
+    
+    # Si las notificaciones están desactivadas, no hacer nada
+    if not notificaciones_activas:
+        return
+
     # Obtener información del mensaje
     sender = await event.get_sender()
     nombre_usuario = sender.username or sender.first_name or "Usuario desconocido"
@@ -38,6 +47,19 @@ async def handler(event):
         url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
         data = {'chat_id': chat_id, 'text': mensaje_filtrado, 'parse_mode': 'Markdown'}
         requests.post(url, data=data)
+
+# Controlar comandos para pausar o reanudar
+@client.on(events.NewMessage(chats=chat_id, pattern='/pausar'))
+async def pausar(event):
+    global notificaciones_activas
+    notificaciones_activas = False
+    await event.reply("🔕 Las notificaciones han sido pausadas.")
+
+@client.on(events.NewMessage(chats=chat_id, pattern='/reanudar'))
+async def reanudar(event):
+    global notificaciones_activas
+    notificaciones_activas = True
+    await event.reply("🔔 Las notificaciones han sido reanudadas.")
 
 print("Bot ejecutándose...")
 
@@ -58,3 +80,4 @@ if __name__ == "__main__":
     flask_thread.start()
     client.start()
     client.run_until_disconnected()
+
