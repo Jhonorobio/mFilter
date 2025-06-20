@@ -391,25 +391,44 @@ async def market_cap_monitor():
         
 # --- FUNCIÓN PRINCIPAL ---
 
-async def main():
-    """Función principal para iniciar el cliente y la DB."""
-    await init_db() # Inicializa la base de datos al arrancar
-    
-    # Inicia el cliente de Telegram y el monitor de market cap concurrentemente
-    await client.start(bot_token=BOT_TOKEN) # Asegúrate de que el bot_token se pase aquí para iniciar como bot
-    
-    # Crea una tarea en segundo plano para el monitoreo de market cap
-    asyncio.create_task(market_cap_monitor())
+# ... (todo tu código anterior, desde el principio hasta la función main, se mantiene igual) ...
 
+# --- FUNCIÓN PRINCIPAL ---
+
+async def main():
+    """
+    Función principal que inicia la DB, el cliente de Telethon, 
+    el servidor web y el monitor de market cap de forma concurrente.
+    """
+    await init_db()
+    
+    # Inicia el cliente de Telegram. Esto es necesario antes de poder usarlo.
+    await client.start(bot_token=BOT_TOKEN)
+    
+    # Creamos las tres tareas de larga duración que se ejecutarán para siempre.
+    telethon_task = client.run_until_disconnected()
+    web_server_task = start_web_server()
+    market_cap_task = market_cap_monitor()
+
+    # Imprimimos los logs de estado ANTES de bloquear la ejecución con gather.
     logging.info("Bot iniciado con persistencia de datos (SQLite).")
     logging.info(f"Monitoreando {len(MONITORED_CHANNELS)} canales/grupos.")
     logging.info(f"Los comandos /stats y /eliminar están activos para el usuario {NOTIFY_CHAT_ID}.")
     logging.info("El bot ahora notificará a partir de la 3ª mención de un CA (incluyendo la mención actual).")
     logging.info(f"El monitor de Market Cap se ejecutará cada {CHECK_INTERVAL_HOURS} horas y eliminará CAs con MC < ${MARKET_CAP_THRESHOLD}.")
+    logging.info("Cliente de Telethon y servidor web listos. Esperando eventos...")
     
-    await client.run_until_disconnected()
+    # asyncio.gather() ejecuta todas las tareas pasadas como argumento de forma concurrente.
+    # El programa no terminará hasta que todas estas tareas terminen (lo cual no harán).
+    await asyncio.gather(
+        telethon_task,
+        web_server_task,
+        market_cap_task
+    )
+
 
 from aiohttp import web
+import os  # <-- AÑADIR ESTA LÍNEA
 
 async def health_check(request):
     """Un endpoint simple para que Render sepa que el bot está activo."""
@@ -425,8 +444,18 @@ async def start_web_server():
     # Render asigna el puerto a través de una variable de entorno
     port = int(os.environ.get("PORT", 8080)) 
     site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    logging.info(f"Servidor web de health check iniciado en el puerto {port}")
+    
+    try:
+        await site.start()
+        logging.info(f"Servidor web de health check iniciado en el puerto {port}")
+        # Mantenemos el servidor corriendo indefinidamente
+        # asyncio.gather se encargará de mantener viva esta tarea.
+        await asyncio.Event().wait()
+    except Exception as e:
+        logging.error(f"Error al iniciar el servidor web: {e}")
+    finally:
+        await runner.cleanup()
+
 
 if __name__ == '__main__':
     try:
