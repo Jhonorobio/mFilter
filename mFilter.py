@@ -409,6 +409,25 @@ async def main():
     
     await client.run_until_disconnected()
 
+from aiohttp import web
+
+async def health_check(request):
+    """Un endpoint simple para que Render sepa que el bot está activo."""
+    return web.Response(text="Bot is alive!")
+
+async def start_web_server():
+    """Inicia un pequeño servidor web para el health check."""
+    app = web.Application()
+    app.router.add_get('/health', health_check) # Ruta para el health check
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    # Render asigna el puerto a través de una variable de entorno
+    port = int(os.environ.get("PORT", 8080)) 
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Servidor web de health check iniciado en el puerto {port}")
+
 if __name__ == '__main__':
     try:
         asyncio.run(main())
