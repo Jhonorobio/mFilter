@@ -400,6 +400,15 @@ async def main():
     Función principal que inicia la DB, el cliente de Telethon, 
     el servidor web y el monitor de market cap de forma concurrente.
     """
+    # El código de limpieza se puede poner aquí también, justo al principio.
+    # Es incluso mejor ponerlo aquí para asegurar que los logs funcionen.
+    if os.path.exists(OLD_SESSION_FILE):
+        try:
+            os.remove(OLD_SESSION_FILE)
+            logging.warning(f"¡LIMPIEZA! Se encontró y eliminó un archivo de sesión antiguo: {OLD_SESSION_FILE}")
+        except OSError as e:
+            logging.error(f"No se pudo eliminar el archivo de sesión antiguo: {e}")
+            
     await init_db()
     
     # Inicia el cliente de Telegram. Esto es necesario antes de poder usarlo.
@@ -429,6 +438,20 @@ async def main():
 
 from aiohttp import web
 import os  # <-- AÑADIR ESTA LÍNEA
+
+# --- CÓDIGO AÑADIDO PARA LA LIMPIEZA ---
+# Nombre del archivo de sesión que queremos eliminar
+OLD_SESSION_FILE = 'bot_session.session'
+
+# Comprobar si el archivo antiguo existe y eliminarlo
+if os.path.exists(OLD_SESSION_FILE):
+    try:
+        os.remove(OLD_SESSION_FILE)
+        # Usamos logging.warning para que sea visible en tus logs de Render
+        logging.warning(f"¡LIMPIEZA! Se encontró y eliminó un archivo de sesión antiguo: {OLD_SESSION_FILE}")
+    except OSError as e:
+        logging.error(f"No se pudo eliminar el archivo de sesión antiguo: {e}")
+
 
 async def health_check(request):
     """Un endpoint simple para que Render sepa que el bot está activo."""
