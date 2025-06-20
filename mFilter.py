@@ -54,7 +54,7 @@ MARKET_CAP_THRESHOLD = 5000  # USD
 CHECK_INTERVAL_HOURS = 24    # Frecuencia de verificación en horas
 
 # Inicializa el cliente de Telethon (para escuchar)
-client = TelegramClient('bot_session', API_ID, API_HASH)
+client = TelegramClient('none', API_ID, API_HASH)
 
 
 # --- NUEVAS FUNCIONES DE BASE DE DATOS (SQLite) ---
