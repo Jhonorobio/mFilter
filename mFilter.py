@@ -28,6 +28,16 @@ TRUSTED_USER_IDS = {
     1282048314: "GENESIS_CHAI",
     7207841877: "muktartt",
     5056344791: "Altrealite",
+    7307760054: "toren_intyya".
+    1799986055: "cryptolegendlife",
+    257354254: "pizza_lite",
+    7137243275: "BullXSnipper",
+    1498423366: "GCryptoD",
+    5784473136: "solanasleepy",
+    6704450505: "adebayor067",
+    7991252498: "Frieren_Jap",
+    6468655141: "Czarrealms",
+    1553399215: "ChocoLoco888",
 }
 
 # --- Canales a Monitorear ---
