@@ -396,7 +396,7 @@ async def main():
     await init_db() # Inicializa la base de datos al arrancar
     
     # Inicia el cliente de Telegram y el monitor de market cap concurrentemente
-    await client.start(bot_token=BOT_TOKEN) # Asegúrate de que el bot_token se pase aquí para iniciar como bot
+    await client.start()
     
     # Crea una tarea en segundo plano para el monitoreo de market cap
     asyncio.create_task(market_cap_monitor())
