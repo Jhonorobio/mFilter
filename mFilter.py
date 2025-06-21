@@ -4,20 +4,23 @@ import logging
 import httpx
 import aiosqlite
 import datetime
+import os  # --- LÍNEA AÑADIDA ---
 from telethon import TelegramClient, events
 from telethon.tl.types import User
+from fastapi import FastAPI # --- LÍNEA AÑADIDA ---
+import uvicorn            # --- LÍNEA AÑADIDA ---
 
 # --- Configuración de Logging (Recomendado) ---
 logging.basicConfig(format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s',
                     level=logging.INFO)
 
 # --- Credenciales y Configuración (PROPORCIONADAS POR EL USUARIO) ---
-API_ID = 20491337
-API_HASH = '72f87102bdc7c1044b2fa298dee9dca5'
-BOT_TOKEN = '7562671189:AAEJIWFW8LfESm09CYcR6GgPbhg5eZ5NbAk'
-# ID del chat de Telegram donde el bot enviará las notificaciones
-# 🔴 ESTE ID TAMBIÉN SE USARÁ PARA AUTORIZAR LOS COMANDOS
-NOTIFY_CHAT_ID = 1048966581
+# ⚠️ RECOMENDACIÓN: Usa variables de entorno en Render en lugar de valores fijos.
+API_ID = os.environ.get('API_ID', 20491337)
+API_HASH = os.environ.get('API_HASH', '72f87102bdc7c1044b2fa298dee9dca5')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '7562671189:AAEJIWFW8LfESm09CYcR6GgPbhg5eZ5NbAk')
+NOTIFY_CHAT_ID = int(os.environ.get('NOTIFY_CHAT_ID', 1048966581))
+
 
 # --- NUEVA CONFIGURACIÓN: GeNeSiS Lounge y Usuarios de Confianza ---
 GENESIS_LOUNGE_ID = 2124901271
@@ -56,9 +59,19 @@ CHECK_INTERVAL_HOURS = 24    # Frecuencia de verificación en horas
 # Inicializa el cliente de Telethon (para escuchar)
 client = TelegramClient('bot_session', API_ID, API_HASH)
 
+# --- LÓGICA DEL SERVIDOR WEB PARA RENDER ---
+app = FastAPI()
 
-# --- NUEVAS FUNCIONES DE BASE DE DATOS (SQLite) ---
+@app.get("/")
+async def health_check():
+    """Endpoint para que UptimeRobot verifique que el bot está vivo."""
+    return {"status": "ok", "message": "Bot is running"}
 
+# --- (AQUÍ VA TODO EL RESTO DE TU CÓDIGO SIN CAMBIOS) ---
+# ... init_db, add_memecoin_to_db, add_mention_to_db, etc. ...
+# ... new_message_handler, stats_handler, etc. ...
+
+#<editor-fold desc="Tu código original (sin cambios)">
 async def init_db():
     """Inicializa la base de datos y crea las tablas si no existen."""
     async with aiosqlite.connect(DB_FILE) as db:
@@ -387,29 +400,36 @@ async def market_cap_monitor():
             logging.info("Monitoreo de Market Cap completado: No se encontraron memecoins para eliminar.")
         
         await asyncio.sleep(CHECK_INTERVAL_HOURS * 3600) # Esperar el intervalo antes de la siguiente verificación
-        
-        
-# --- FUNCIÓN PRINCIPAL ---
+#</editor-fold>
 
-async def main():
-    """Función principal para iniciar el cliente y la DB."""
-    await init_db() # Inicializa la base de datos al arrancar
-    
-    # Inicia el cliente de Telegram y el monitor de market cap concurrentemente
-    await client.start(bot_token=BOT_TOKEN) # Asegúrate de que el bot_token se pase aquí para iniciar como bot
-    
-    # Crea una tarea en segundo plano para el monitoreo de market cap
-    asyncio.create_task(market_cap_monitor())
-
-    logging.info("Bot iniciado con persistencia de datos (SQLite).")
-    logging.info(f"Monitoreando {len(MONITORED_CHANNELS)} canales/grupos.")
-    logging.info(f"Los comandos /stats y /eliminar están activos para el usuario {NOTIFY_CHAT_ID}.")
-    logging.info("El bot ahora notificará a partir de la 3ª mención de un CA (incluyendo la mención actual).")
-    logging.info(f"El monitor de Market Cap se ejecutará cada {CHECK_INTERVAL_HOURS} horas y eliminará CAs con MC < ${MARKET_CAP_THRESHOLD}.")
-    
+# --- FUNCIÓN PRINCIPAL (MODIFICADA PARA RENDER) ---
+async def run_bot():
+    """Función que contiene la lógica principal del bot de Telegram."""
+    await client.start(bot_token=BOT_TOKEN)
+    logging.info("Bot de Telethon iniciado correctamente.")
     await client.run_until_disconnected()
 
+async def main():
+    """Función principal para iniciar la DB, el bot, el monitor y el servidor web."""
+    await init_db()
+
+    # Configuración del servidor Uvicorn
+    # Render asigna el puerto en la variable de entorno 'PORT'
+    port = int(os.environ.get('PORT', 8080)) # Usa el puerto 8080 para pruebas locales
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+
+    # Inicia todas las tareas concurrentemente
+    logging.info("Iniciando todos los servicios...")
+    await asyncio.gather(
+        server.serve(),          # Tarea 1: El servidor web FastAPI
+        run_bot(),               # Tarea 2: El cliente de Telethon
+        market_cap_monitor()     # Tarea 3: El monitor de Market Cap
+    )
+
 if __name__ == '__main__':
+    # Renombramos tu archivo a 'bot.py' o el nombre que prefieras
+    # El bucle asyncio es ahora gestionado por la función main
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
